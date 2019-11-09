@@ -13,5 +13,5 @@ run
 | 13517102      | Kintan Sekar A.   | Coding dikit-dikit   |          33          |
 
 ## Referensi
-https://superuser.blog/websocket-server-python/
-https://github.com/Pithikos/python-websocket-server
+1. https://superuser.blog/websocket-server-python/
+2. https://github.com/Pithikos/python-websocket-server
