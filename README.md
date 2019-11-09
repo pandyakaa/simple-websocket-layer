@@ -1,8 +1,8 @@
 # simple-websocket-layer
-## Apeni / K3-01
+Apeni / K3-01
 
 ## Cara penggunaan 
-run 
+run
 ```python server.py```
 
 ## Pembagian tugas
