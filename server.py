@@ -9,8 +9,11 @@
 from WSserver import *
 import hashlib
 
+# ------------------- Fungsi message_received(client, server, message) ------------------- #
+# Digunakan untuk menerima pesan dari client dalam bentuk text
+# Akan dikirim balik berupa text tanpa "!echo" untuk soal nomor 1
+# Akan dikirim balik file "submission.zip" berupa binary untuk soal nomor 2 
 def message_received(client, server, message):
-	print(message+'halo')
 	if '!echo' in message :
 		server._unicast_(client,message.split('!echo ')[1])
 	elif '!submission' in message :
@@ -19,8 +22,12 @@ def message_received(client, server, message):
 			temp = f.read()
 		server._binary_unicast(client,temp)
 
+# ------------------- Fungsi binary_message_received(client, server, message) ------------------- #
+# Digunakan untuk menerima pesan dari client dalam bentuk binary
+# Akan dijadikan sebuah file dengan ekstensi .zip, kemudian dibandingkan
+# md5 file yang dikirim dengan md5 file yang kita miliki
+# Return 0 jika tidak sesuai dan 1 jika sesuai
 def binary_message_received(client, server, message):
-	print(message)
 	temp = b''
 	temp = temp + message
 	with open('submiss-result.zip','wb') as f :
