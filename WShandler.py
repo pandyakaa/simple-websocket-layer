@@ -128,9 +128,10 @@ class WShandler(socketserver.StreamRequestHandler):
     def read_next_message(self) :
         # Baca first byte dan second byte yang berisi :
         # FIN, OPCODE, dan PAYLOAD LENGTH
-        first_byte, second_byte = self.read_bytes(2)
-        if first_byte == 0 and second_byte == 0 :
-            print('Frame error')
+        try :
+            first_byte, second_byte = self.read_bytes(2)
+        except ValueError as e:
+            b1, b2 = 0, 0
         
         # Ambil nilai FIN, OPCODE dan PAYLOAD LENGTH
         fin_val = first_byte & 0x80 # FIN = 1000 0000
@@ -157,8 +158,7 @@ class WShandler(socketserver.StreamRequestHandler):
             return
         # Jika isi frame merupakan binary
         elif opcode_val == 0x2 :
-            print('Binary frames not supported')
-            return
+            opcode_handler = self.server._binary_message_received_
         # Jika isi frame merupakan text
         elif opcode_val == 0x1 :
             opcode_handler = self.server._message_received_
@@ -179,7 +179,7 @@ class WShandler(socketserver.StreamRequestHandler):
         if payload_len_val == 126 :
             payload_len_val = struct.unpack(">H",self.rfile.read(2))[0]
         elif payload_len_val == 127 :
-            payload_len_val = struct.unpack(">H",self.rfile.read(8))[0]
+            payload_len_val = struct.unpack(">Q",self.rfile.read(8))[0]
         
         # Baca 4 byte mask
         mask = self.read_bytes(4)
@@ -189,12 +189,21 @@ class WShandler(socketserver.StreamRequestHandler):
         for message in self.read_bytes(payload_len_val) :
             message = message ^ mask[len(messages)%4]
             messages.append(message)
-        opcode_handler(self, messages.decode('utf8'))
-    
+        
+        if opcode_val == 0x2 :
+            opcode_handler(self, messages)
+        else :
+            opcode_handler(self, messages.decode('utf8'))
+
     # ------------------- Fungsi send_message(message) ------------------- #
-    # Digunakan untuk mengirim message kepada client
+    # Digunakan untuk mengirim message dalam text kepada client
     def send_message(self,message) :
-        self.send_text(message)
+        self.send_text(message,0x1)
+
+    # ------------------- Fungsi send_binary_message(message) ------------------- #
+    # Digunakan untuk mengirim message dalam binary kepada client
+    def send_binary_message(self,message) :
+        self.send_text(message, 0x2)
     
     # ------------------- Fungsi send_pong_message() ------------------- #
     # Digunakan untuk mengirim PONG kepada client
@@ -203,9 +212,12 @@ class WShandler(socketserver.StreamRequestHandler):
     
     # ------------------- Fungsi send_text() ------------------- #
     # Digunakan untuk mengirim text kepada client
-    def send_text(self,message, opcode=0x1) :
+    def send_text(self,message, opcode) :
         header = bytearray()
-        payload = message.encode('utf-8')
+        if opcode == 0x1 or opcode == 0xA :
+            payload = message.encode('utf-8')
+        elif opcode == 0x2:
+            payload = message
         payload_length = len(payload)
 
         # Case untuk payload dengan length <= 125
