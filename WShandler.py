@@ -131,19 +131,13 @@ class WShandler(socketserver.StreamRequestHandler):
         try :
             first_byte, second_byte = self.read_bytes(2)
         except ValueError as e:
-            b1, b2 = 0, 0
+            first_byte, second_byte = 0, 0
         
         # Ambil nilai FIN, OPCODE dan PAYLOAD LENGTH
         fin_val = first_byte & 0x80 # FIN = 1000 0000
         opcode_val = first_byte & 0x0f # OPCODE = 0000 1111
         masked_val = second_byte & 0x80 # MASKED = 1000 0000
-        payload_len_val = second_byte & 0x7f # PAYLOAD_LEN jika <= 125 = 0111 1111
-
-        # Case jika payload tidak di-mask oleh client
-        if not masked_val :
-            print('Request not masked')
-            self.keep_alive = False
-            return
+        payload_len_val = second_byte & 0x7f # PAYLOAD_LEN = 0111 1111
 
         # Case jika request untuk close connection
         if opcode_val == 0x8 : # Jika isi frame untuk close connection
@@ -152,12 +146,8 @@ class WShandler(socketserver.StreamRequestHandler):
             return
 
         # Case untuk tipe frames
-        # Jika isi frame merupakan continuation
-        if opcode_val == 0x0 :
-            print('Continuation frames not supported')
-            return
         # Jika isi frame merupakan binary
-        elif opcode_val == 0x2 :
+        if opcode_val == 0x2 :
             opcode_handler = self.server._binary_message_received_
         # Jika isi frame merupakan text
         elif opcode_val == 0x1 :
@@ -168,31 +158,42 @@ class WShandler(socketserver.StreamRequestHandler):
         # Jika isi frame untuk PONG
         elif opcode_val == 0xA :
             opcode_handler = self.server._pong_received_
-        else :
-            print('Unknown OPCODE')
-            self.keep_alive = False
-            return
         
         # Case untuk payload_length
-        # Jika payload length 126 -> baca 2 bit selanjutnya
-        # Jika payload length 127 -> baca 8 bit selanjutnya
+        # Jika payload length 126 -> baca 2 bytes selanjutnya
+        # Jika payload length 127 -> baca 8 bytes selanjutnya(seharusnya)
         if payload_len_val == 126 :
             payload_len_val = struct.unpack(">H",self.rfile.read(2))[0]
         elif payload_len_val == 127 :
-            payload_len_val = struct.unpack(">Q",self.rfile.read(8))[0]
+            payload_len_val = struct.unpack(">L",self.rfile.read(4))[0]
+
+        if masked_val :
+            # Baca 4 byte mask
+            mask = self.read_bytes(4)
+            # Encode payload text dengan mask
+            # Untuk setiap byte pada message akan di XOR dengan mask[len(messages) mod 4]
+            messages = bytearray()
+            for message in self.read_bytes(payload_len_val) :
+                message = message ^ mask[len(messages)%4]
+                messages.append(message)
+        else :
+            # Jika mask tidak ter-set
+            messages = bytearray()
+            for message in self.read_bytes(payload_len_val) :
+                messages.append(message)
         
-        # Baca 4 byte mask
-        mask = self.read_bytes(4)
-        # Encode payload text dengan mask
-        # Untuk setiap byte pada message akan di XOR dengan mask[len(messages) mod 4]
-        messages = bytearray()
-        for message in self.read_bytes(payload_len_val) :
-            message = message ^ mask[len(messages)%4]
-            messages.append(message)
+        # Jika isi frame merupakan continuation
+        temp_cont = b''
+        if opcode_val == 0x0 :
+            temp_cont += messages
+            opcode_handler = self.server._continuation_message_received_
         
         if opcode_val == 0x2 :
             opcode_handler(self, messages)
-        else :
+        elif opcode_val == 0x0 and fin_val == 1 :
+            opcode_handler(self, temp_cont)
+            temp_cont = b''
+        elif opcode_val == 0xA or opcode_val == 0x9 or opcode_val == 0x1 :
             opcode_handler(self, messages.decode('utf8'))
 
     # ------------------- Fungsi send_message(message) ------------------- #

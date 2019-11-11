@@ -27,11 +27,18 @@ class WSserver(socketserver.ThreadingMixIn,socketserver.TCPServer, Utils) :
     def _binary_message_received_(self, handler, msg):
         self.binary_message_received(self.handler_to_client(handler), self, msg)
 
+    # ------------------- Fungsi _continuation_message_received_ ------------------- #
+    # Akan membuat sebuah fungsi baru yaitu continuation_message_received
+    def _continuation_message_received_(self, handler, msg):
+        self.continuation_message_received(self.handler_to_client(handler), self, msg)
+
     # ------------------- Fungsi _ping_received_ ------------------- #
     # Jika menerima PING, maka akan membalas dengan pesan berisi PONG (opcode = 0xA)
     def _ping_received_(self, handler, msg):
         handler.send_pong(msg)
 
+    # ------------------- Fungsi _pong_received ------------------- #
+    # Jika menerima PONG, maka akan pass
     def _pong_received_(self, handler, msg):
         pass
     

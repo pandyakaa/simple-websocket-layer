@@ -10,8 +10,13 @@ class Utils :
         pass
 
     # ------------------- Fungsi binary_message_received(client,server,message) ------------------- #
-    # Akan pass karena di fungsi akan di set oleh set_fn_binary)message_received
+    # Akan pass karena di fungsi akan di set oleh set_fn_binary_message_received
     def binary_message_received(self, client, server, message):
+        pass
+
+    # ------------------- Fungsi continuation_message_received(client,server,message) ------------------- #
+    # Akan pass karena di fungsi akan di set oleh set_fn_continuation_message_received
+    def continuation_message_received(self, client, server, message):
         pass
 
     # ------------------- Fungsi set_fn_message_received(self, fn) ------------------- #
@@ -23,3 +28,8 @@ class Utils :
     # Akan passing fungsi binary_message_received dengan fungsi fn
     def set_fn_binary_message_received(self, fn):
         self.binary_message_received = fn
+
+    # ------------------- Fungsi set_fn_continuation_message_received(self, fn) ------------------- #
+    # Akan passing fungsi continuation_message_received dengan fungsi fn
+    def set_fn_continuation_message_received(self, fn):
+        self.continuation_message_received = fn
